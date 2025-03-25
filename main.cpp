@@ -1,13 +1,13 @@
+#include <cstddef>
+#include <iostream>
+#include <string>
+#include <thread>
+#include <iomanip>
 #include <boost/beast/core.hpp>
 #include <boost/beast/http.hpp>
 #include <boost/beast/version.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <iostream>
-#include <string>
-#include <thread>
-#include <cstddef>
-#include <iomanip>
 
 namespace beast = boost::beast;
 namespace http = beast::http;
@@ -105,7 +105,7 @@ void do_session(tcp::socket socket)
          break;
       if (ec)
       {
-         std::cerr << "読み取りエラー: " << ec.message() << std::endl;
+         print_error("読み取りエラー: ", ec.message());
          break;
       }
 

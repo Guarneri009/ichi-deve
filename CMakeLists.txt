@@ -50,7 +50,8 @@ endif()
 find_package(Threads REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
 
-# CUDA固有のコンパイル設定
+# CUDA固有のコンパイル設定 GTX1070のアーキテクチャを指定
+# https://developer.nvidia.com/cuda-gpus
 set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES "61")
-# C++17とCUDA17を両方サポートするためのコンパイルオプション
+# C++20とCUDA20を両方サポートするためのコンパイルオプション
 target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20 cuda_std_20)
