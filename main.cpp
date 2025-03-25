@@ -1,72 +1,149 @@
+#include <boost/beast/core.hpp>
+#include <boost/beast/http.hpp>
+#include <boost/beast/version.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/signal_set.hpp>
 #include <iostream>
 #include <string>
+#include <thread>
 #include <cstddef>
-#include <memory>
-#include <chrono>
+#include <iomanip>
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include "stb_image_write.h"
+namespace beast = boost::beast;
+namespace http = beast::http;
+namespace net = boost::asio;
+using tcp = net::ip::tcp;
 
-#define TIME_ELAPSED_START(x) auto x##0 = std::chrono::system_clock::now();
-#define TIME_ELAPSED_END(x, mess)                                      \
-   auto x##1 = std::chrono::system_clock::now();                       \
-   std::chrono::duration<double, std::milli> x##elapsed = x##1 - x##0; \
-   std::cout << mess << x##elapsed.count() << " ms" << std::endl;
-
-constexpr auto view_size = 1024;
-
-extern "C" unsigned char *MandelbrotCPU(std::size_t, int, float, float, float);
-#ifdef __CUDACC__
-extern "C" unsigned char *MandelbrotGPU(std::size_t, int, float, float, float);
-#endif
-
-struct RGBA
+template <typename T>
+constexpr std::string_view type_name()
 {
-   unsigned char r, g, b, a;
-};
+   std::string_view name = __PRETTY_FUNCTION__;
+   auto start = name.find('=') + 2;
+   auto end = name.find(';', start);
+   return name.substr(start, end - start);
+}
 
-int draw(unsigned char *ptr, const std::string &filename)
+template <typename T>
+constexpr void print(T value)
 {
-   constexpr std::size_t width{view_size}, height{view_size};
-   std::unique_ptr<RGBA[][width]> rgba(new (std::nothrow) RGBA[height][width]);
-   if (!rgba)
-      return -1;
+   std::cout << value << std::endl;
+}
+template <typename T, typename... Args>
+constexpr void print(T first, Args... args)
+{
+   std::cout << first << " ";
+   print(args...);
+}
 
-   for (std::size_t row{}; row < height; ++row)
-      for (std::size_t col{}; col < width; ++col)
+template <typename T>
+constexpr void print_error(T value)
+{
+   std::cerr << value << std::endl;
+}
+template <typename T, typename... Args>
+constexpr void print_error(T first, Args... args)
+{
+   std::cerr << first << " ";
+   print_error(args...);
+}
+
+// 簡単なルーティング関数
+template <class Body, class Allocator, class Send>
+void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Send &&send)
+{
+   if (req.method() == http::verb::get && req.target() == "/hello")
+   {
+      http::string_body::value_type body = "Hello, REST!";
+      auto const size = body.size();
+
+      http::response<http::string_body> res{
+          std::piecewise_construct,
+          std::make_tuple(std::move(body)),
+          std::make_tuple(http::status::ok, req.version())};
+
+      res.set(http::field::server, "Boost.Beast REST Server");
+      res.set(http::field::content_type, "text/plain");
+      res.content_length(size);
+      res.keep_alive(req.keep_alive());
+      return send(std::move(res));
+   }
+   else if (req.method() == http::verb::post && req.target() == "/echo")
+   {
+      http::response<http::string_body> res{
+          http::status::ok, req.version()};
+      res.set(http::field::server, "Boost.Beast REST Server");
+      res.set(http::field::content_type, "application/json");
+      res.body() = req.body(); // リクエストボディをそのまま返す
+      res.prepare_payload();
+      res.keep_alive(req.keep_alive());
+      return send(std::move(res));
+   }
+   else
+   {
+      http::response<http::string_body> res{
+          http::status::not_found, req.version()};
+      res.set(http::field::content_type, "text/plain");
+      res.body() = "Not found";
+      res.prepare_payload();
+      return send(std::move(res));
+   }
+}
+
+// セッション（1クライアント用）
+void do_session(tcp::socket socket)
+{
+   bool close = false;
+   beast::error_code ec;
+
+   beast::flat_buffer buffer;
+
+   while (!close)
+   {
+      http::request<http::string_body> req;
+      http::read(socket, buffer, req, ec);
+      if (ec == http::error::end_of_stream)
+         break;
+      if (ec)
       {
-         memcpy(&rgba[row][col], &ptr[(col + row * view_size) * 4], 4);
+         std::cerr << "読み取りエラー: " << ec.message() << std::endl;
+         break;
       }
 
-   stbi_write_png(filename.c_str(), static_cast<int>(width), static_cast<int>(height),
-                  static_cast<int>(sizeof(RGBA)), rgba.get(), 0);
-   return 0;
+      // レスポンス送信用ラムダ
+      auto const send = [&](auto &&response)
+      {
+         using response_type = typename std::decay<decltype(response)>::type;
+         http::write(socket, response, ec);
+      };
+
+      handle_request(std::move(req), send);
+   }
+
+   // セッション終了
+   socket.shutdown(tcp::socket::shutdown_send, ec);
 }
 
 int main()
 {
+   try
+   {
+      net::io_context ioc{1};
 
-   auto size = view_size * view_size * 4 * sizeof(unsigned char);
-   const auto scale = 2.0f;
-   const auto center_x = 0.0f;
-   const auto center_y = 0.0f;
-   // const auto scale = 0.00002f;
-   //  const auto center_x = 0.743643135f;
-   //  const auto center_y = 0.131825963f;
+      tcp::acceptor acceptor{ioc, {tcp::v4(), 8080}};
+      print("サーバー起動中: http://localhost:8080");
 
-   // run on CPU
-   TIME_ELAPSED_START(CPU);
-   auto *ptr_cpu = MandelbrotCPU(size, view_size, scale, center_x, center_y);
-   TIME_ELAPSED_END(CPU, "CPU total result..  ");
-   draw(ptr_cpu, "picture_CPU.png");
-   delete (ptr_cpu);
-
-#ifdef __CUDACC__
-   //  run on CPU
-   TIME_ELAPSED_START(GPU);
-   auto *ptr_gpu = MandelbrotGPU(size, view_size, scale, center_x, center_y);
-   TIME_ELAPSED_END(GPU, "GPU total result..  ");
-   draw(ptr_gpu, "picture_GPU.png");
-   delete (ptr_gpu);
-#endif
+      while (true)
+      {
+         tcp::socket socket{ioc};
+         acceptor.accept(socket);
+         std::thread([sock = std::move(socket)]() mutable
+                     { do_session(std::move(sock)); })
+             .detach();
+      }
+   }
+   catch (std::exception const &e)
+   {
+      print_error("エラー: ", e.what());
+      return EXIT_FAILURE;
+   }
 }

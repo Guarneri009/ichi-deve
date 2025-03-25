@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.19.0)
 message(STATUS "CMake version: ${CMAKE_VERSION}")
 
 enable_language(CXX)
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 project(main CXX)
@@ -47,7 +47,10 @@ if(CUDA_FOUND)
     target_compile_definitions(${PROJECT_NAME} PUBLIC __CUDACC__)
 endif()
 
+find_package(Threads REQUIRED)
+target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
+
 # CUDA固有のコンパイル設定
 set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES "61")
 # C++17とCUDA17を両方サポートするためのコンパイルオプション
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_17 cuda_std_17)
+target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20 cuda_std_20)
