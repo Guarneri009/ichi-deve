@@ -1,9 +1,16 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/cpp
 {
-	"name": "C++",
+	"name": "ichi-deve",
 	"build": {
 		"dockerfile": "Dockerfile"
+	},
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-vscode.cpptools-extension-pack"
+			]
+		}
 	}
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
