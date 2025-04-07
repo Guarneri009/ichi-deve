@@ -1,0 +1,20 @@
+[package]
+name = "map_app"
+version = "0.1.0"
+description = "maplibre-re"
+edition = "2024"
+license = "MIT OR Apache-2.0"
+
+[features]
+web-webgl = ["maplibre/web-webgl"]
+trace = ["maplibre/trace"]
+headless = ["maplibre/headless"]
+
+[dependencies]
+env_logger = "0.11.3"
+maplibre = { git = "https://github.com/maplibre/maplibre-rs.git", version = "0.1.0", features = [
+    "thread-safe-futures",
+] }
+maplibre_winit = { git = "https://github.com/maplibre/maplibre-rs", package = "maplibre-winit" }
+clap = { version = "4.3.24", features = ["derive"] }
+tile-grid = "0.6.1"
