@@ -1,8 +1,6 @@
 #![deny(unused_imports)]
-
-use std::{io::ErrorKind, path::PathBuf};
-
 use clap::{Parser, Subcommand};
+use csscolorparser::Color;
 use maplibre::{
     coords::LatLon,
     environment::OffscreenKernelConfig,
@@ -15,9 +13,14 @@ use maplibre::{
         scheduler::TokioScheduler,
     },
     render::{RenderPlugin, builder::RendererBuilder, settings::WgpuSettings},
-    style::Style,
+    style::{
+        Style,
+        layer::{FillPaint, LayerPaint, StyleLayer},
+    },
 };
 use maplibre_winit::{WinitEnvironment, WinitMapWindowConfig};
+use std::str::FromStr;
+use std::{io::ErrorKind, path::PathBuf};
 
 #[cfg(feature = "headless")]
 mod headless;
@@ -93,8 +96,36 @@ pub fn run_headed_map_custom<P>(
 
         let renderer_builder = RendererBuilder::new().with_wgpu_settings(wgpu_settings);
 
+        // ★★★ 1. カスタムスタイルを定義 ★★★
+        // 例: 国土地理院標準地図を表示するスタイルJSON文字列
+        // 生文字列リテラルならそのまま書ける
+
+        // Style 型の変数を作成
+        let custom_map_style: Style = Style {
+            version: 8,
+            name: "Default Style".to_string(),
+            metadata: Default::default(),
+            sources: Default::default(),
+            center: Some([50.85045, 4.34878]),
+            zoom: Some(13.0),
+            pitch: Some(0.0),
+            layers: vec![StyleLayer {
+                index: 0,
+                id: "landuse".to_string(),
+                maxzoom: None,
+                minzoom: None,
+                metadata: None,
+                paint: Some(LayerPaint::Fill(FillPaint {
+                    fill_color: Some(Color::from_str("#e0dfdf").unwrap()),
+                })),
+                source: None,
+                source_layer: Some("landuse".to_string()),
+            }],
+        };
+
         let mut map = Map::new(
-            Style::default(),
+            //Style::default(),
+            custom_map_style, // ★★★ ここでカスタムスタイルを指定 ★★★
             kernel,
             renderer_builder,
             vec![
