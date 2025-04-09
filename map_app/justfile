@@ -1,0 +1,7 @@
+# デバッグビルド
+run:
+    cargo run headed
+
+# リリースビルド
+release:
+    cargo run headed --release

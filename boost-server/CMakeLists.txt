@@ -10,6 +10,17 @@ project(main CXX)
 file(GLOB cpu_source_files "${CMAKE_SOURCE_DIR}/*.cpp")
 file(GLOB gpu_source_files "${CMAKE_SOURCE_DIR}/*.cu")
 
+find_package(Boost REQUIRED)
+if(Boost_FOUND)
+    message(STATUS "Boost version: ${Boost_VERSION}")
+    message(STATUS "Boost include dir: ${Boost_INCLUDE_DIRS}")
+    message(STATUS "Boost libraries: ${Boost_LIBRARIES}")
+    message(STATUS "Boost include dirs: ${Boost_INCLUDE_DIRS}")
+    include_directories(${Boost_INCLUDE_DIRS})
+else()
+    message(FATAL_ERROR "Boost not found")
+endif()
+
 # OpenMPを有効にするかどうかを選択するオプション (デフォルトではOFF)
 option(ENABLchE_OPENMP "Enable OpenMP support" OFF)
 
@@ -49,6 +60,7 @@ endif()
 
 find_package(Threads REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
+
 
 # CUDA固有のコンパイル設定 GTX1070のアーキテクチャを指定
 # https://developer.nvidia.com/cuda-gpus

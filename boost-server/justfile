@@ -1,0 +1,20 @@
+# Justfile
+
+# プロジェクトルートを取得し、ビルドディレクトリを作り直す
+default:
+    just build
+
+# プロジェクトルートを取得し、ビルドディレクトリを作り直す
+build:
+    rm -rf ./build
+    cmake -S . -B ./build -G Ninja -DENABLE_OPENMP=ON
+    cmake --build ./build
+
+# 実行ファイルを走らせる
+run:
+    ./build/main
+
+# ビルドしてから実行する
+all:
+    just build
+    just run
