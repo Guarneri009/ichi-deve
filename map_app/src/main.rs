@@ -11,6 +11,7 @@ use maplibre::{
         ReqwestOffscreenKernelEnvironment, http_client::ReqwestHttpClient, run_multithreaded,
         scheduler::TokioScheduler,
     },
+    raster::DefaultRasterTransferables,
     render::{RenderPlugin, builder::RendererBuilder, settings::WgpuSettings},
     style::{
         Style,
@@ -18,6 +19,7 @@ use maplibre::{
         raster::RasterLayer,
         source::{Source, VectorSource},
     },
+    vector::DefaultVectorTransferables,
 };
 use maplibre_winit::{WinitEnvironment, WinitMapWindowConfig};
 use std::{collections::HashMap, str::FromStr};
@@ -33,6 +35,9 @@ struct Cli {
     #[clap(subcommand)]
     command: Commands,
 }
+
+// type RasterTransfer = maplibre::raster::DefaultRasterTransferables;
+// type VecterTransfer = maplibre::raster::DefaultRasterTransferables;
 
 fn parse_lat_long(env: &str) -> Result<LatLon, std::io::Error> {
     let split = env.split(',').collect::<Vec<_>>();
@@ -292,21 +297,17 @@ pub fn run_headed_map_custom<P>(
         let mut map = Map::new(
             //style_test,
             //Style::default(),
-            //map_style,
-            custom_map_style,
+            map_style,
+            //custom_map_style,
             //
             kernel,
             renderer_builder,
             vec![
                 Box::new(RenderPlugin::default()),
-                //
-                // Box::new(maplibre::vector::VectorPlugin::<
-                //     maplibre::vector::DefaultVectorTransferables,
-                // >::default()),
-                //
-                Box::new(maplibre::raster::RasterPlugin::<
-                    maplibre::raster::DefaultRasterTransferables,
-                >::default()),
+                // ベクター
+                Box::new(maplibre::vector::VectorPlugin::<DefaultVectorTransferables>::default()),
+                // ラスタ
+                Box::new(maplibre::raster::RasterPlugin::<DefaultRasterTransferables>::default()),
                 #[cfg(debug_assertions)]
                 Box::new(maplibre::debug::DebugPlugin::default()),
             ],
