@@ -131,6 +131,59 @@ pub fn run_headed_map_custom<P>(
 
         let renderer_builder = RendererBuilder::new().with_wgpu_settings(wgpu_settings);
 
+        // language=JSON
+        let style_json_str = r##"
+{
+    "version": 8,
+    "name": "Test Style",
+    "metadata": {},
+    "sources": {
+    "openmaptiles": {
+        "type": "vector",
+        "url": "https://maps.tuerantuer.org/europe_germany/tiles.json"
+    }
+    },
+    "layers": [
+    {
+        "id": "background",
+        "type": "background",
+        "paint": {"background-color": "rgb(239,239,239)"}
+    },
+    {
+        "id": "transportation",
+        "type": "line",
+        "source": "openmaptiles",
+        "source-layer": "transportation",
+        "paint": {
+        "line-color": "#3D3D3D"
+        }
+    },
+    {
+        "id": "boundary",
+        "type": "line",
+        "source": "openmaptiles",
+        "source-layer": "boundary",
+        "paint": {
+        "line-color": "#3D3D3D"
+        }
+    },
+    {
+        "id": "building",
+        "minzoom": 14,
+        "maxzoom": 15,
+        "type": "fill",
+        "source": "openmaptiles",
+        "source-layer": "building",
+        "paint": {
+        "line-color": "#3D3D3D"
+        }
+    }
+    ]
+}
+"##;
+
+        let style_test: Style = serde_json::from_str(style_json_str).unwrap();
+
         // let source: Source = {
         //     VectorSource {
         //         attribution: Some("<a href='https://vectortile1.gsi.go.jp/xyz/planet/{z}/{x}/{y}.pbf' target='_blank'>国土地理院ベクトルタイル</a>".to_string()),
@@ -204,16 +257,31 @@ pub fn run_headed_map_custom<P>(
             //     source_layer: Some("ls-boundary-cty".to_string()),
             //     //source_layer: None,
             // }],
-            layers: vec![StyleLayer {
-                index: 8,
-                id: "raster".to_string(),
-                maxzoom: None,
-                minzoom: None,
-                metadata: None,
-                paint: Some(LayerPaint::Raster(RasterLayer::default())),
-                source: None,
-                source_layer: Some("raster".to_string()),
-            }],
+            layers: vec![
+                StyleLayer {
+                    index: 0,
+                    id: "park".to_string(),
+                    maxzoom: None,
+                    minzoom: None,
+                    metadata: None,
+                    paint: Some(LayerPaint::Fill(FillPaint {
+                        fill_color: Some(Color::from_str("#c8facc").unwrap()),
+                    })),
+                    source: None,
+                    source_layer: Some("park".to_string()),
+                },
+                StyleLayer {
+                    index: 8,
+                    id: "raster-gsi".to_string(),
+                    maxzoom: None,
+                    minzoom: None,
+                    metadata: None,
+                    paint: Some(LayerPaint::Raster(RasterLayer::default())),
+                    source: None,
+                    //source_layer: Some("raster".to_string()),
+                    source_layer: Some("gsi-raster".to_string()),
+                },
+            ],
         };
         // 2. 構造体更新構文を使って Style インスタンスを作成
         let map_style = Style {
@@ -222,9 +290,11 @@ pub fn run_headed_map_custom<P>(
         };
 
         let mut map = Map::new(
+            //style_test,
             //Style::default(),
             //map_style,
             custom_map_style,
+            //
             kernel,
             renderer_builder,
             vec![
