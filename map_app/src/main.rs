@@ -1,4 +1,3 @@
-#![deny(unused_imports)]
 use clap::{Parser, Subcommand};
 use csscolorparser::Color;
 use maplibre::{
@@ -16,10 +15,12 @@ use maplibre::{
     style::{
         Style,
         layer::{FillPaint, LayerPaint, StyleLayer},
+        raster::RasterLayer,
+        source::{Source, VectorSource},
     },
 };
 use maplibre_winit::{WinitEnvironment, WinitMapWindowConfig};
-use std::str::FromStr;
+use std::{collections::HashMap, str::FromStr};
 use std::{io::ErrorKind, path::PathBuf};
 
 #[cfg(feature = "headless")]
@@ -68,6 +69,40 @@ enum Commands {
     },
 }
 
+fn create_gsi_vector_source() -> Source {
+    // Step 1: VectorSource インスタンスを作成
+    let vector_data = VectorSource {
+        // tiles フィールドは Option<String> なので、単一の URL 文字列を Some でラップ
+        tiles: Some("https://cyberjapandata.gsi.go.jp/xyz/experimental_bvmap/{z}/{x}/{y}.pbf".to_string()),
+        minzoom: Some(4),
+        maxzoom: Some(16),
+        attribution: Some("<a href='https://maps.gsi.go.jp/development/vt.html' target='_blank'>国土地理院ベクトルタイル</a>".to_string()),
+        // bounds や scheme は指定しない場合は None
+        bounds: None,
+        scheme: None, // None か Some(TileAddressingScheme::XYZ) を指定
+    };
+
+    // Step 2: Source::Vector バリアントでラップして返す
+    Source::Vector(vector_data)
+}
+
+fn create_gsi_raster_source() -> Source {
+    // Step 1: VectorSource インスタンスを作成 (Rasterでも同じ構造体を使う定義になっている)
+    let raster_data = VectorSource {
+        // tiles フィールドは Option<String> なので、単一の URL 文字列を Some でラップ
+        tiles: Some("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png".to_string()),
+        maxzoom: Some(18),
+        attribution: Some("<a href='https://maps.gsi.go.jp/development/ichiran.html' target='_blank'>地理院タイル</a>".to_string()),
+        // 他のフィールドは None
+        bounds: None,
+        minzoom: None,
+        scheme: None,
+    };
+
+    // Step 2: Source::Raster バリアントでラップして返す
+    Source::Raster(raster_data)
+}
+
 pub fn run_headed_map_custom<P>(
     cache_path: Option<P>,
     window_config: WinitMapWindowConfig<()>,
@@ -96,46 +131,112 @@ pub fn run_headed_map_custom<P>(
 
         let renderer_builder = RendererBuilder::new().with_wgpu_settings(wgpu_settings);
 
-        // ★★★ 1. カスタムスタイルを定義 ★★★
-        // 例: 国土地理院標準地図を表示するスタイルJSON文字列
-        // 生文字列リテラルならそのまま書ける
+        // let source: Source = {
+        //     VectorSource {
+        //         attribution: Some("<a href='https://vectortile1.gsi.go.jp/xyz/planet/{z}/{x}/{y}.pbf' target='_blank'>国土地理院ベクトルタイル</a>".to_string()),
+        //         bounds: None,
+        //         maxzoom: Some(16),
+        //         minzoom: Some(4),
+        //         scheme: None,
+        //         tiles: Some("https://vectortile1.gsi.go.jp/xyz/planet/{z}/{x}/{y}.pbf".to_string()),
+        //     }
+        // };
+        // HashMap に入れる例
+        let gsi_vector = create_gsi_vector_source();
+        let gsi_raster = create_gsi_raster_source();
+
+        println!("GSI Vector Source: {:?}", gsi_vector);
+        println!("GSI Raster Source: {:?}", gsi_raster);
+
+        // HashMap に入れる例
+        let mut custom_source = HashMap::new();
+        custom_source.insert("gsi-vector".to_string(), gsi_vector);
+        custom_source.insert("gsi-raster".to_string(), gsi_raster);
+        // let custom_source: <HashMap<String, Source> = serde_json::from_str(
+        //     r#"
+        //     {
+        //       "gsi-vector": {
+        //         "type": "vector",
+        //         "tiles": [
+        //           "https://vectortile1.gsi.go.jp/xyz/planet/{z}/{x}/{y}.pbf"
+        //         ],
+        //         "minzoom": 4,
+        //         "maxzoom": 16,
+        //         "attribution": "<a href='https://maps.gsi.go.jp/development/vt.html' target='_blank'>国土地理院ベクトルタイル</a>"
+        //       }
+        //     }
+        //     "#,
+        // ).unwrap();
+
+        // let custom_source: HashMap<String, Source> = serde_json::from_str(
+        //     r#"
+        // {
+        //     "type": "vector",
+        //     "tiles": ["https://example.com/tiles/{z}/{x}/{y}.pbf"],
+        //     "minzoom": 0,
+        //     "maxzoom": 14
+        // }
+        // "#,
+        // )
+        // .unwrap();
 
         // Style 型の変数を作成
         let custom_map_style: Style = Style {
             version: 8,
             name: "Default Style".to_string(),
             metadata: Default::default(),
-            sources: Default::default(),
-            center: Some([50.85045, 4.34878]),
+            sources: custom_source,
+            center: Some([35.681, 139.767]), // 東京駅付近の座標 [緯度, 経度]
             zoom: Some(13.0),
             pitch: Some(0.0),
+            // layers: vec![StyleLayer {
+            //     index: 0,
+            //     id: "ls-boundary-cty".to_string(),
+            //     // id: "ls-coastline".to_string(),
+            //     maxzoom: None,
+            //     minzoom: None,
+            //     metadata: None,
+            //     paint: Some(LayerPaint::Fill(FillPaint {
+            //         fill_color: Some(Color::from_str("#00dfdf").unwrap()),
+            //     })),
+            //     //source: Some("gsi-raster".to_string()),
+            //     source: None,
+            //     source_layer: Some("ls-boundary-cty".to_string()),
+            //     //source_layer: None,
+            // }],
             layers: vec![StyleLayer {
-                index: 0,
-                id: "landuse".to_string(),
+                index: 8,
+                id: "raster".to_string(),
                 maxzoom: None,
                 minzoom: None,
                 metadata: None,
-                paint: Some(LayerPaint::Fill(FillPaint {
-                    fill_color: Some(Color::from_str("#e0dfdf").unwrap()),
-                })),
+                paint: Some(LayerPaint::Raster(RasterLayer::default())),
                 source: None,
-                source_layer: Some("landuse".to_string()),
+                source_layer: Some("raster".to_string()),
             }],
+        };
+        // 2. 構造体更新構文を使って Style インスタンスを作成
+        let map_style = Style {
+            center: Some([35.681, 139.767]), // 東京駅付近の座標 [緯度, 経度]
+            ..Style::default()
         };
 
         let mut map = Map::new(
             //Style::default(),
-            custom_map_style, // ★★★ ここでカスタムスタイルを指定 ★★★
+            //map_style,
+            custom_map_style,
             kernel,
             renderer_builder,
             vec![
                 Box::new(RenderPlugin::default()),
-                Box::new(maplibre::vector::VectorPlugin::<
-                    maplibre::vector::DefaultVectorTransferables,
-                >::default()),
-                // Box::new(maplibre::raster::RasterPlugin::<
-                //     maplibre::raster::DefaultRasterTransferables,
+                //
+                // Box::new(maplibre::vector::VectorPlugin::<
+                //     maplibre::vector::DefaultVectorTransferables,
                 // >::default()),
+                //
+                Box::new(maplibre::raster::RasterPlugin::<
+                    maplibre::raster::DefaultRasterTransferables,
+                >::default()),
                 #[cfg(debug_assertions)]
                 Box::new(maplibre::debug::DebugPlugin::default()),
             ],
