@@ -4,4 +4,4 @@ run:
 
 # リリースビルド
 release:
-    cargo run headed --release
+    cargo run --release -- headed
