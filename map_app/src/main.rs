@@ -186,23 +186,10 @@ pub fn run_headed_map_custom<P>(
     ]
 }
 "##;
-
         let style_test: Style = serde_json::from_str(style_json_str).unwrap();
 
-        // let source: Source = {
-        //     VectorSource {
-        //         attribution: Some("<a href='https://vectortile1.gsi.go.jp/xyz/planet/{z}/{x}/{y}.pbf' target='_blank'>国土地理院ベクトルタイル</a>".to_string()),
-        //         bounds: None,
-        //         maxzoom: Some(16),
-        //         minzoom: Some(4),
-        //         scheme: None,
-        //         tiles: Some("https://vectortile1.gsi.go.jp/xyz/planet/{z}/{x}/{y}.pbf".to_string()),
-        //     }
-        // };
-        // HashMap に入れる例
         let gsi_vector = create_gsi_vector_source();
         let gsi_raster = create_gsi_raster_source();
-
         println!("GSI Vector Source: {:?}", gsi_vector);
         println!("GSI Raster Source: {:?}", gsi_raster);
 
@@ -210,33 +197,6 @@ pub fn run_headed_map_custom<P>(
         let mut custom_source = HashMap::new();
         custom_source.insert("gsi-vector".to_string(), gsi_vector);
         custom_source.insert("gsi-raster".to_string(), gsi_raster);
-        // let custom_source: <HashMap<String, Source> = serde_json::from_str(
-        //     r#"
-        //     {
-        //       "gsi-vector": {
-        //         "type": "vector",
-        //         "tiles": [
-        //           "https://vectortile1.gsi.go.jp/xyz/planet/{z}/{x}/{y}.pbf"
-        //         ],
-        //         "minzoom": 4,
-        //         "maxzoom": 16,
-        //         "attribution": "<a href='https://maps.gsi.go.jp/development/vt.html' target='_blank'>国土地理院ベクトルタイル</a>"
-        //       }
-        //     }
-        //     "#,
-        // ).unwrap();
-
-        // let custom_source: HashMap<String, Source> = serde_json::from_str(
-        //     r#"
-        // {
-        //     "type": "vector",
-        //     "tiles": ["https://example.com/tiles/{z}/{x}/{y}.pbf"],
-        //     "minzoom": 0,
-        //     "maxzoom": 14
-        // }
-        // "#,
-        // )
-        // .unwrap();
 
         // Style 型の変数を作成
         let custom_map_style: Style = Style {
@@ -288,8 +248,8 @@ pub fn run_headed_map_custom<P>(
                 },
             ],
         };
-        // 2. 構造体更新構文を使って Style インスタンスを作成
-        let map_style = Style {
+
+        let map_style_center_tokyo_defult = Style {
             center: Some([35.681, 139.767]), // 東京駅付近の座標 [緯度, 経度]
             ..Style::default()
         };
@@ -297,7 +257,7 @@ pub fn run_headed_map_custom<P>(
         let mut map = Map::new(
             //style_test,
             //Style::default(),
-            map_style,
+            map_style_center_tokyo_defult,
             //custom_map_style,
             //
             kernel,
