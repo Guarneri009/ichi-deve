@@ -57,7 +57,6 @@ constexpr void print_error(T first, Args... args)
 }
 
 // ヘルパー関数: エラーレスポンスを生成
-template <class Body>
 http::response<http::string_body> make_error_response(
     http::status status,
     std::string_view error_message,
@@ -94,7 +93,7 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
       send(make_error_response(http::status::forbidden, "Forbidden", req.version(), req.keep_alive()));
    };
 
-   // --- 既存のルート ---
+   // --- ルート ---
    if (req.method() == http::verb::get && req.target() == "/hello")
    {
       http::string_body::value_type body = "Hello, REST!";
@@ -120,7 +119,6 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
       res.keep_alive(req.keep_alive());
       return send(std::move(res));
    }
-   // ★★★ COG ファイル読み込みAPIを追加 ★★★
    else if (req.method() == http::verb::get && req.target().starts_with("/cog?"))
    {
       // Boost.URL を使ってクエリパラメータをパース (推奨)
@@ -199,7 +197,6 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
 
       return send(std::move(res));
    }
-   // --- COG API ここまで ---
    else
    {
       return not_found(); // どのルートにもマッチしない場合は 404
@@ -207,46 +204,46 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
 }
 
 // 簡単なルーティング関数
-template <class Body, class Allocator, class Send>
-void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Send &&send)
-{
-   if (req.method() == http::verb::get && req.target() == "/hello")
-   {
-      http::string_body::value_type body = "Hello, REST!";
-      auto const size = body.size();
+// template <class Body, class Allocator, class Send>
+// void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Send &&send)
+// {
+//    if (req.method() == http::verb::get && req.target() == "/hello")
+//    {
+//       http::string_body::value_type body = "Hello, REST!";
+//       auto const size = body.size();
 
-      http::response<http::string_body> res{
-          std::piecewise_construct,
-          std::make_tuple(std::move(body)),
-          std::make_tuple(http::status::ok, req.version())};
+//       http::response<http::string_body> res{
+//           std::piecewise_construct,
+//           std::make_tuple(std::move(body)),
+//           std::make_tuple(http::status::ok, req.version())};
 
-      res.set(http::field::server, "Boost.Beast REST Server");
-      res.set(http::field::content_type, "text/plain");
-      res.content_length(size);
-      res.keep_alive(req.keep_alive());
-      return send(std::move(res));
-   }
-   else if (req.method() == http::verb::post && req.target() == "/echo")
-   {
-      http::response<http::string_body> res{
-          http::status::ok, req.version()};
-      res.set(http::field::server, "Boost.Beast REST Server");
-      res.set(http::field::content_type, "application/json");
-      res.body() = req.body(); // リクエストボディをそのまま返す
-      res.prepare_payload();
-      res.keep_alive(req.keep_alive());
-      return send(std::move(res));
-   }
-   else
-   {
-      http::response<http::string_body> res{
-          http::status::not_found, req.version()};
-      res.set(http::field::content_type, "text/plain");
-      res.body() = "Not found";
-      res.prepare_payload();
-      return send(std::move(res));
-   }
-}
+//       res.set(http::field::server, "Boost.Beast REST Server");
+//       res.set(http::field::content_type, "text/plain");
+//       res.content_length(size);
+//       res.keep_alive(req.keep_alive());
+//       return send(std::move(res));
+//    }
+//    else if (req.method() == http::verb::post && req.target() == "/echo")
+//    {
+//       http::response<http::string_body> res{
+//           http::status::ok, req.version()};
+//       res.set(http::field::server, "Boost.Beast REST Server");
+//       res.set(http::field::content_type, "application/json");
+//       res.body() = req.body(); // リクエストボディをそのまま返す
+//       res.prepare_payload();
+//       res.keep_alive(req.keep_alive());
+//       return send(std::move(res));
+//    }
+//    else
+//    {
+//       http::response<http::string_body> res{
+//           http::status::not_found, req.version()};
+//       res.set(http::field::content_type, "text/plain");
+//       res.body() = "Not found";
+//       res.prepare_payload();
+//       return send(std::move(res));
+//    }
+// }
 
 // セッション（1クライアント用）
 void do_session(tcp::socket socket)

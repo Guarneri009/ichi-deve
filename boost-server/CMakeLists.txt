@@ -38,10 +38,9 @@ else()
     message(STATUS "OpenMP support disabled.")
 endif()
 
-# For CUDA
-#if(POLICY CMP0146)
-#    cmake_policy(SET CMP0146 OLD)
-#endif()
+
+find_package(Boost REQUIRED COMPONENTS system url)
+
 
 find_package(CUDAToolkit  QUIET)
 if(CUDA_FOUND)
@@ -59,8 +58,16 @@ if(CUDA_FOUND)
 endif()
 
 find_package(Threads REQUIRED)
-target_link_libraries(${PROJECT_NAME} PRIVATE Threads::Threads)
+target_link_libraries(${PROJECT_NAME}
+    PRIVATE Threads::Threads
+    Boost::system Boost::url
+)
 
+
+# For CUDA
+#if(POLICY CMP0146)
+#    cmake_policy(SET CMP0146 OLD)
+#endif()
 
 # CUDA固有のコンパイル設定 GTX1070のアーキテクチャを指定
 # https://developer.nvidia.com/cuda-gpus
