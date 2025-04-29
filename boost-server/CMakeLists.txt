@@ -52,9 +52,20 @@ else()
     add_executable(${PROJECT_NAME} ${cpu_source_files})
 endif()
 
-# コンパイル時にCUDAが定義されるように設定
+# if(POLICY CMP0146)
+#     cmake_policy(SET CMP0146 OLD)
+# endif()
+
+    # コンパイル時にCUDAが定義されるように設定
 if(CUDA_FOUND)
     target_compile_definitions(${PROJECT_NAME} PUBLIC __CUDACC__)
+
+    # CUDA固有のコンパイル設定 GTX1070のアーキテクチャを指定
+    # https://developer.nvidia.com/cuda-gpus
+    set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES "61")
+    # C++20とCUDA20を両方サポートするためのコンパイルオプション
+    target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20 cuda_std_20)
+
 endif()
 
 find_package(Threads REQUIRED)
@@ -62,15 +73,3 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE Threads::Threads
     Boost::system Boost::url
 )
-
-
-# For CUDA
-#if(POLICY CMP0146)
-#    cmake_policy(SET CMP0146 OLD)
-#endif()
-
-# CUDA固有のコンパイル設定 GTX1070のアーキテクチャを指定
-# https://developer.nvidia.com/cuda-gpus
-set_target_properties(${PROJECT_NAME} PROPERTIES CUDA_ARCHITECTURES "61")
-# C++20とCUDA20を両方サポートするためのコンパイルオプション
-target_compile_features(${PROJECT_NAME} PUBLIC cxx_std_20 cuda_std_20)

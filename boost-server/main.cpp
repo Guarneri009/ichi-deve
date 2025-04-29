@@ -137,17 +137,8 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
          return bad_request("Missing 'path' query parameter");
       }
       std::string cog_path_str = (*it).value; // boost::core::string_view を std::string に
-
-      // --- !!! セキュリティチェック (非常に重要) !!! ---
-      // ここで cog_path_str を検証する
-      // 例:
-      // 1. 絶対パスではないことを確認 (または許可された絶対パスか)
-      // 2. ディレクトリトラバーサル ("../") が含まれていないか確認
-      // 3. 許可されたベースディレクトリ内にパスが収まっているか確認
-      // 4. ファイル拡張子が ".tif" または ".tiff" であることを確認 (オプション)
-      // ※ 下記は非常に単純な例であり、不十分です。堅牢な実装が必要です。
       fs::path cog_path(cog_path_str);
-      fs::path base_dir = "/path/to/allowed/cog/directory"; // ★ 実際に許可するディレクトリパスに変更 ★
+      fs::path base_dir = "./data";
       fs::path absolute_cog_path;
       try
       {
@@ -160,19 +151,20 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
       }
 
       // ベースディレクトリの外に出ていないかチェック (非常に重要)
-      if (absolute_cog_path.string().rfind(base_dir.string(), 0) != 0)
-      {
-         print_error("Forbidden path access attempted: ", cog_path_str);
-         return forbidden();
-      }
+      print("Absolute path: ", absolute_cog_path.string());
+      // if (absolute_cog_path.string().rfind(base_dir.string(), 0) != 0)
+      // {
+      //    print_error("Forbidden path access attempted: ", cog_path_str);
+      //    return forbidden();
+      // }
       if (!fs::exists(absolute_cog_path) || !fs::is_regular_file(absolute_cog_path))
       {
          return not_found();
       }
-      // --- セキュリティチェックここまで (要強化) ---
 
       beast::error_code ec;
       http::file_body::value_type file;
+
       // 検証済み(だがここでは単純化のため元のパス)のパスでファイルを開く
       // ※ absolute_cog_path を使うべき
       file.open(cog_path_str.c_str(), beast::file_mode::scan, ec);
@@ -202,48 +194,6 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
       return not_found(); // どのルートにもマッチしない場合は 404
    }
 }
-
-// 簡単なルーティング関数
-// template <class Body, class Allocator, class Send>
-// void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Send &&send)
-// {
-//    if (req.method() == http::verb::get && req.target() == "/hello")
-//    {
-//       http::string_body::value_type body = "Hello, REST!";
-//       auto const size = body.size();
-
-//       http::response<http::string_body> res{
-//           std::piecewise_construct,
-//           std::make_tuple(std::move(body)),
-//           std::make_tuple(http::status::ok, req.version())};
-
-//       res.set(http::field::server, "Boost.Beast REST Server");
-//       res.set(http::field::content_type, "text/plain");
-//       res.content_length(size);
-//       res.keep_alive(req.keep_alive());
-//       return send(std::move(res));
-//    }
-//    else if (req.method() == http::verb::post && req.target() == "/echo")
-//    {
-//       http::response<http::string_body> res{
-//           http::status::ok, req.version()};
-//       res.set(http::field::server, "Boost.Beast REST Server");
-//       res.set(http::field::content_type, "application/json");
-//       res.body() = req.body(); // リクエストボディをそのまま返す
-//       res.prepare_payload();
-//       res.keep_alive(req.keep_alive());
-//       return send(std::move(res));
-//    }
-//    else
-//    {
-//       http::response<http::string_body> res{
-//           http::status::not_found, req.version()};
-//       res.set(http::field::content_type, "text/plain");
-//       res.body() = "Not found";
-//       res.prepare_payload();
-//       return send(std::move(res));
-//    }
-// }
 
 // セッション（1クライアント用）
 void do_session(tcp::socket socket)

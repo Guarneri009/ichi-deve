@@ -18,3 +18,9 @@ run:
 all:
     just build
     just run
+
+
+#サーバーを実行し、Web ブラウザや curl などで http://localhost:8080/cog?path=/actual/path/to/your.tif のような URL にアクセス
+# （/actual/path/to/your.tif は、コード内の base_dir からの相対パスまたは設定に応じたパスに置き換えてください）。
+# http://localhost:8080/cog?path=./data/test.tif
+# http://localhost:8080/cog?path=./test.tif
