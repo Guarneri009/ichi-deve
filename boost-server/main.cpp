@@ -1,7 +1,7 @@
 #include <cstddef>
 #include <iostream>
 #include <string>
-#include <string_view> // string_view を使うため
+#include <string_view>
 #include <thread>
 #include <iomanip>
 #include <boost/beast/core.hpp>
@@ -9,14 +9,12 @@
 #include <boost/beast/version.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/signal_set.hpp>
-#include <boost/beast/http/file_body.hpp> // file_body を使うため
-#include <boost/url/url_view.hpp>         // URL解析のため (推奨)
-#include <boost/url/parse.hpp>            // URL解析のため (推奨)
-#include <filesystem>                     // パス検証のため (推奨)
+#include <boost/beast/http/file_body.hpp>
+#include <boost/url/url_view.hpp>
+#include <boost/url/parse.hpp>
+#include <filesystem>
 
-// ファイルシステムのネームスペース (C++17以降)
 namespace fs = std::filesystem;
-
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace net = boost::asio;
@@ -56,11 +54,10 @@ constexpr void print_error(T first, Args... args)
    print_error(args...);
 }
 
-// ヘルパー関数: エラーレスポンスを生成
 http::response<http::string_body> make_error_response(
     http::status status,
     std::string_view error_message,
-    unsigned version, // request version
+    unsigned version,
     bool keep_alive)
 {
    http::response<http::string_body> res{status, version};
@@ -72,7 +69,6 @@ http::response<http::string_body> make_error_response(
    return res;
 }
 
-// 簡単なルーティング関数 (COGハンドラを追加)
 template <class Body, class Allocator, class Send>
 void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Send &&send)
 {
@@ -93,7 +89,6 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
       send(make_error_response(http::status::forbidden, "Forbidden", req.version(), req.keep_alive()));
    };
 
-   // --- ルート ---
    if (req.method() == http::verb::get && req.target() == "/hello")
    {
       http::string_body::value_type body = "Hello, REST!";
@@ -113,7 +108,7 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
       http::response<http::string_body> res{
           http::status::ok, req.version()};
       res.set(http::field::server, "Boost.Beast REST Server");
-      res.set(http::field::content_type, "application/json"); // Assuming JSON echo
+      res.set(http::field::content_type, "application/json");
       res.body() = req.body();
       res.prepare_payload();
       res.keep_alive(req.keep_alive());
@@ -121,22 +116,19 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
    }
    else if (req.method() == http::verb::get && req.target().starts_with("/cog?"))
    {
-      // Boost.URL を使ってクエリパラメータをパース (推奨)
       urls::result<urls::url_view> rv = urls::parse_uri_reference(req.target());
       if (!rv)
       {
          return bad_request("Invalid URI");
       }
       urls::url_view uv = *rv;
-      auto params = uv.params(); // クエリパラメータを取得
-
-      // "path" パラメータを探す
+      auto params = uv.params();
       auto it = params.find("path");
       if (it == params.end())
       {
          return bad_request("Missing 'path' query parameter");
       }
-      std::string cog_path_str = (*it).value; // boost::core::string_view を std::string に
+      std::string cog_path_str = (*it).value;
       fs::path cog_path(cog_path_str);
       fs::path base_dir = "./data";
       fs::path absolute_cog_path;
@@ -150,7 +142,6 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
          return bad_request("Invalid path format.");
       }
 
-      // ベースディレクトリの外に出ていないかチェック (非常に重要)
       print("Absolute path: ", absolute_cog_path.string());
       // if (absolute_cog_path.string().rfind(base_dir.string(), 0) != 0)
       // {
@@ -165,8 +156,6 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
       beast::error_code ec;
       http::file_body::value_type file;
 
-      // 検証済み(だがここでは単純化のため元のパス)のパスでファイルを開く
-      // ※ absolute_cog_path を使うべき
       file.open(cog_path_str.c_str(), beast::file_mode::scan, ec);
 
       if (ec == beast::errc::no_such_file_or_directory)
@@ -176,10 +165,9 @@ void handle_request(http::request<Body, http::basic_fields<Allocator>> &&req, Se
 
       auto const size = file.size();
 
-      // ファイルボディを持つレスポンスを作成
       http::response<http::file_body> res{
           std::piecewise_construct,
-          std::make_tuple(std::move(file)), // file_body をムーブ
+          std::make_tuple(std::move(file)),
           std::make_tuple(http::status::ok, req.version())};
 
       res.set(http::field::server, "Boost.Beast REST Server");
